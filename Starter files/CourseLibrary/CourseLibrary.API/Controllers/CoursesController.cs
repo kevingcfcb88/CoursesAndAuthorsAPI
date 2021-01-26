@@ -30,7 +30,7 @@ namespace CourseLibrary.API.Controllers
                 throw new ArgumentNullException(nameof(mapper));
         }
 
-        [HttpGet]
+        [HttpGet(Name = "GetCoursesForAuthor")]
         public ActionResult<IEnumerable<CourseDto>> GetCoursesForAuthor(Guid authorId)
         {
             if (!_courseLibraryRepository.AuthorExists(authorId))
@@ -60,7 +60,7 @@ namespace CourseLibrary.API.Controllers
             return Ok(_mapper.Map<CourseDto>(courseForAuthorFromRepo));
         }
 
-        [HttpPost]
+        [HttpPost(Name = "CreateCourseForAuthor")]
         public ActionResult<CourseDto> CreateCourseForAuthor(
             Guid authorId, CourseForCreationDto course)
         {
@@ -75,13 +75,13 @@ namespace CourseLibrary.API.Controllers
 
             var courseToReturn = _mapper.Map<CourseDto>(courseEntity);
             return CreatedAtRoute("GetCourseForAuthor",
-                new { authorId = authorId, courseId = courseToReturn.Id }, 
+                new { authorId = authorId, courseId = courseToReturn.Id },
                 courseToReturn);
         }
 
         [HttpPut("{courseId}")]
-        public IActionResult UpdateCourseForAuthor(Guid authorId, 
-            Guid courseId, 
+        public IActionResult UpdateCourseForAuthor(Guid authorId,
+            Guid courseId,
             CourseForUpdateDto course)
         {
             if (!_courseLibraryRepository.AuthorExists(authorId))
@@ -119,7 +119,7 @@ namespace CourseLibrary.API.Controllers
         }
 
         [HttpPatch("{courseId}")]
-        public ActionResult PartiallyUpdateCourseForAuthor(Guid authorId, 
+        public ActionResult PartiallyUpdateCourseForAuthor(Guid authorId,
             Guid courseId,
             JsonPatchDocument<CourseForUpdateDto> patchDocument)
         {
@@ -149,7 +149,7 @@ namespace CourseLibrary.API.Controllers
                 var courseToReturn = _mapper.Map<CourseDto>(courseToAdd);
 
                 return CreatedAtRoute("GetCourseForAuthor",
-                    new { authorId, courseId = courseToReturn.Id }, 
+                    new { authorId, courseId = courseToReturn.Id },
                     courseToReturn);
             }
 

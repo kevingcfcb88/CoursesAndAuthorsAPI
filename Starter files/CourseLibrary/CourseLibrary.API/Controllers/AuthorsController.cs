@@ -69,7 +69,25 @@ namespace CourseLibrary.API.Controllers
 
             Response.Headers.Add("X-Pagination", JsonSerializer.Serialize(paginationMetada));
 
-            return Ok(_mapper.Map<IEnumerable<AuthorDto>>(authorsFromRepo).ShapeData(authorsResourceParameters.Fields));
+            var links = CreateLinksForAuthors(authorsResourceParameters);
+
+            var shapedData = _mapper.Map<IEnumerable<AuthorDto>>(authorsFromRepo).ShapeData(authorsResourceParameters.Fields);
+
+            var shapedAuthorWithLinks = shapedData.Select(a =>
+            {
+                var authorAsDictionary = a as IDictionary<string, object>;
+                var authorLinks = CreateLinksForAuthor((Guid)authorAsDictionary["Id"], null);
+                authorAsDictionary.Add("links", authorLinks);
+                return authorAsDictionary;
+            });
+
+            var linkedCollectionResource = new
+            {
+                value = shapedAuthorWithLinks,
+                links
+            };
+
+            return Ok(linkedCollectionResource);
         }
 
         [HttpGet("{authorId}", Name = "GetAuthor")]
@@ -82,7 +100,13 @@ namespace CourseLibrary.API.Controllers
                 return NotFound();
             }
 
-            return Ok(_mapper.Map<AuthorDto>(authorFromRepo).ShapeData(fields));
+            var links = CreateLinksForAuthor(authorId, fields);
+
+            var linkedResourceToReturn = _mapper.Map<AuthorDto>(authorFromRepo).ShapeData(fields) as IDictionary<string, object>;
+
+            linkedResourceToReturn.Add("links", links);
+
+            return Ok(linkedResourceToReturn);
         }
 
         [HttpPost]
@@ -93,9 +117,16 @@ namespace CourseLibrary.API.Controllers
             _courseLibraryRepository.Save();
 
             var authorToReturn = _mapper.Map<AuthorDto>(authorEntity);
+
+            var links = CreateLinksForAuthor(authorToReturn.Id, null);
+
+            var linkedResourceToReturn = authorToReturn.ShapeData(null) as IDictionary<string, object>;
+
+            linkedResourceToReturn.Add("links", links);
+
             return CreatedAtRoute("GetAuthor",
-                new { authorId = authorToReturn.Id },
-                authorToReturn);
+                new { authorId = linkedResourceToReturn["Id"] },
+                linkedResourceToReturn);
         }
 
         [HttpOptions]
@@ -105,7 +136,7 @@ namespace CourseLibrary.API.Controllers
             return Ok();
         }
 
-        [HttpDelete("{authorId}")]
+        [HttpDelete("{authorId}", Name = "DeleteAuthor")]
         public ActionResult DeleteAuthor(Guid authorId)
         {
             var authorFromRepo = _courseLibraryRepository.GetAuthor(authorId);
@@ -148,6 +179,7 @@ namespace CourseLibrary.API.Controllers
                         mainCategory = authorResourceParameters.MainCategory,
                         searchQuery = authorResourceParameters.SearchQuery
                     });
+                case ResourceUriType.Current:
                 default:
                     return Url.Link("GetAuthors",
                     new
@@ -160,6 +192,50 @@ namespace CourseLibrary.API.Controllers
                         searchQuery = authorResourceParameters.SearchQuery
                     });
             }
+        }
+
+        private IEnumerable<LinkDto> CreateLinksForAuthor(Guid authorId, string fields)
+        {
+            var links = new List<LinkDto>();
+
+            if (string.IsNullOrWhiteSpace(fields))
+            {
+                links.Add(
+                    new LinkDto(Url.Link("GetAuthor", new { authorId }), "self", "GET")
+                );
+            }
+            else
+            {
+                links.Add(
+                    new LinkDto(Url.Link("GetAuthor", new { authorId, fields }), "self", "GET")
+                );
+            }
+
+            links.Add(
+                new LinkDto(Url.Link("DeleteAuthor", new { authorId }), "self", "DELETE")
+            );
+
+            links.Add(
+                new LinkDto(Url.Link("CreateCourseForAuthor", new { authorId }), "create_course_for_author", "POST")
+            );
+
+            links.Add(
+                new LinkDto(Url.Link("GetCoursesForAuthor", new { authorId }), "get_course_for_author", "GET")
+            );
+
+            return links;
+        }
+
+        private IEnumerable<LinkDto> CreateLinksForAuthors(AuthorsResourceParameters authorsResourceParameters)
+        {
+            var links = new List<LinkDto>();
+
+            links.Add(
+                new LinkDto(CreateAuthorResourceUri(authorsResourceParameters, ResourceUriType.Current),
+                "self", "GET")
+            );
+
+            return links;
         }
     }
 }
